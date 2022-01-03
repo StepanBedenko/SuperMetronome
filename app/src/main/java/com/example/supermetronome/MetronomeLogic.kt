@@ -7,7 +7,8 @@ import kotlinx.coroutines.*
 
 class MetronomeLogic(
     var bpmMillis: Long, var divisible: Int, var divisor: Int, val soundPool: SoundPool
-) {
+)
+{
     var isPlaying = false
     var job: Job? = null
 

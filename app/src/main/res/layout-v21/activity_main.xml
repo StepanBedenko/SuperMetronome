@@ -22,7 +22,7 @@
                 style="@style/operationButton"
                 android:layout_marginStart="20dp"
                 android:src="@drawable/subtract"
-                android:layout_marginLeft="20dp"/>
+                android:layout_marginLeft="20dp" />
 
             <TextView
                 android:id="@+id/bpmTextView"
@@ -38,8 +38,8 @@
                 android:gravity="center_horizontal" />
 
             <ImageButton
-                android:id="@+id/bpmPlusImageButton"
                 style="@style/operationButton"
+                android:id="@+id/bpmPlusImageButton"
                 android:layout_marginEnd="20dp"
                 android:src="@drawable/add"
                 android:layout_marginRight="20dp" />

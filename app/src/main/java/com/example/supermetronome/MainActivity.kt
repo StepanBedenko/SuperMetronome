@@ -1,174 +1,159 @@
 package com.example.supermetronome
 
-import android.app.appsearch.GlobalSearchSession
-import android.content.Context
-import android.drm.DrmStore
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.SoundPool
+
+import android.R.attr
+import android.media.*
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.text.TextUtils.join
-import android.view.inputmethod.EditorInfo
+import android.view.View
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
-import java.lang.String.join
-import java.sql.Time
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.thread
-import kotlinx.coroutines.*
-import kotlinx.coroutines.async
-import kotlin.system.*
-import kotlin.system.measureTimeMillis
+import android.R.attr.track
+import android.content.Context
+import java.io.BufferedInputStream
+import java.io.DataInputStream
+import java.io.File
+import java.io.FileInputStream
 
-class MainActivity : AppCompatActivity() {
 
+const val DEFAULT_BPM = 60
+const val DEFAULT_DIVISIBLE = 4
+const val DEFAULT_DIVISOR = 4
+const val MAX_BPM = 300
+const val MIN_BPM = 20
+const val MAX_DIVISIBLE = 20
+const val MIN_DIVISIBLE = 1
+const val  MAX_DIVISOR = 20
+const val MIN_DIVISOR = 1
+
+class MainActivity : AppCompatActivity(), View.OnClickListener {
+
+    lateinit var bpmMinusImageButton: ImageButton
+    lateinit var bpmTextView: TextView
+    lateinit var bpmPlusImageButton: ImageButton
+
+    lateinit var dividedMinusImageButton: ImageButton
+    lateinit var dividedTextView: TextView
+    lateinit var dividedPlusImageButton: ImageButton
+
+    lateinit var divisorMinusImageButton: ImageButton
+    lateinit var divisorTextView: TextView
+    lateinit var divisorPlusImageButton: ImageButton
+
+    lateinit var playButton: Button
+
+    lateinit var audioTrackHandler: AudioTrackHandler
+    lateinit var audioTrack: AudioTrack
+
+    //TODO replace all "divided" with "divisible"
     var isPlaying: Boolean = false
-    var bpm: Int = 130
-    var bpmToMillis = countBpm(bpm)
-    var divisible: Int = 4
-    var divisor: Int = 4
+    var bpm: Int = DEFAULT_BPM
+    var divisible: Int = DEFAULT_DIVISIBLE
+    var divisor: Int = DEFAULT_DIVISOR
+    var beatDelay: Long = 0
 
+    //TODO rename bpn to pbm. crash
+    private fun initViews() {
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    val audioAttributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_GAME)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .build()
+        bpmMinusImageButton = findViewById(R.id.bpnMinusImageButton)
+        bpmTextView = findViewById(R.id.bpmTextView)
+        bpmPlusImageButton = findViewById(R.id.bpmPlusImageButton)
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    var soundPool: SoundPool = SoundPool.Builder().setAudioAttributes(audioAttributes).build()
+        dividedMinusImageButton = findViewById(R.id.dividedMinusImageButton)
+        dividedTextView = findViewById(R.id.dividedTextView)
+        dividedPlusImageButton = findViewById(R.id.dividedPlusImageButton)
 
+        divisorMinusImageButton = findViewById(R.id.divisorMinusImageButton)
+        divisorTextView = findViewById(R.id.divisorTextView)
+        divisorPlusImageButton = findViewById(R.id.divisorPlusImageButton)
 
-    var metronome: MetronomeLogic = MetronomeLogic(bpmToMillis, divisible, divisor, soundPool)
+        playButton = findViewById(R.id.playButton)
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    @ObsoleteCoroutinesApi
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        val minusBtnUp = findViewById<Button>(R.id.minusButtonUp)
-        val plusBtnUp = findViewById<Button>(R.id.plusButtonUp)
-        val upNum = findViewById<TextView>(R.id.upNum)
-        val minusBtnDown = findViewById<Button>(R.id.minusButtonDown)
-        val plusBtnDown = findViewById<Button>(R.id.plusButtonDown)
-        val downNum = findViewById<TextView>(R.id.downNum)
-        val playBtn = findViewById<Button>(R.id.playBtn)
-        val bpmPlusBtn = findViewById<Button>(R.id.bpmPlus)
-        val bpmMinusBtn = findViewById<Button>(R.id.bpmMinus)
-        val bpmView = findViewById<TextView>(R.id.bpmView)
+        bpmMinusImageButton.setOnClickListener(this)
+        bpmPlusImageButton.setOnClickListener(this)
 
+        dividedMinusImageButton.setOnClickListener(this)
+        dividedPlusImageButton.setOnClickListener(this)
 
+        divisorMinusImageButton.setOnClickListener(this)
+        divisorPlusImageButton.setOnClickListener(this)
 
-        soundPool.load(applicationContext, R.raw.metro1,1)
-        soundPool.load(applicationContext, R.raw.metro2,1)
+        playButton.setOnClickListener(this)
 
+    }
 
-        upNum.text = divisible.toString()
-        downNum.text = divisor.toString()
-        bpmView.text = bpm.toString()
+    override fun onClick(v: View?) {
+        when(v?.id){
+            R.id.bpnMinusImageButton -> {
+                if (bpm > MIN_BPM){
+                    bpm--
+                    bpmTextView.text = bpm.toString()
+                    countBpm()
+                }
+            }
+            R.id.bpmPlusImageButton -> {
+                if (bpm < MAX_BPM){
+                    bpm++
+                    bpmTextView.text = bpm.toString()
+                    countBpm()
+                }
+            }
 
+            R.id.dividedMinusImageButton -> {
+                if (divisible > MIN_DIVISIBLE) {
+                    divisible--
+                    dividedTextView.text = divisible.toString()
+                }
+            }
+            R.id.dividedPlusImageButton -> {
+                if (divisible < MAX_DIVISIBLE) {
+                    divisible++
+                    dividedTextView.text = divisible.toString()
+                }
+            }
 
-        var counterUp = upNum.text.toString().toInt()
-        var counterDown = downNum.text.toString().toInt()
+            R.id.divisorMinusImageButton -> {
+                if(divisor > MIN_DIVISOR){
+                    divisor--
+                    divisorTextView.text = divisor.toString()
+                }
+            }
+            R.id.divisorPlusImageButton -> {
+                if(divisor < MAX_DIVISOR){
+                    divisor++
+                    divisorTextView.text = divisor.toString()
+                }
+            }
 
-        bpmView.setOnEditorActionListener { v, actionId, event ->
-            when(actionId){
-                EditorInfo.IME_ACTION_DONE -> {
-                    val num: Int = v.text.toString().toInt()
-                    if (num in 1..300){
-                        v.text = num.toString()
-                        bpm = num
-                        bpmToMillis = countBpm(bpm)
-                        metronome.bpmMillis = bpmToMillis
-                    } else{
-                        v.text = bpm.toString()
+            R.id.playButton -> {
+                when(isPlaying){
+                    false -> {
+                        isPlaying = true
+                        playButton.text = "Stop"
+                        audioTrack.play()
+                        audioTrack.stop()
                     }
-                    true
-                }
-                else -> false
-            }
-        }
-
-        bpmPlusBtn.setOnClickListener {
-            if (bpm < 300) {
-                bpm++
-                bpmView.text = bpm.toString()
-                bpmToMillis = countBpm(bpm)
-                metronome.bpmMillis = bpmToMillis
-            }
-        }
-
-        bpmMinusBtn.setOnClickListener {
-            if (bpm > 0) {
-                bpm--
-                bpmView.text = bpm.toString()
-                bpmToMillis = countBpm(bpm)
-                metronome.bpmMillis = bpmToMillis
-            }
-
-        }
-
-        playBtn.setOnClickListener {
-            if (!isPlaying) {
-                playBtn.setText(R.string.stop)
-                isPlaying = true
-                metronome.start()
-            }
-            else {
-                isPlaying = false
-                playBtn.setText(R.string.play)
-                metronome.stop()
-            }
-        }
-
-        minusBtnUp.setOnClickListener {
-            if (counterUp > 1) {
-                counterUp -= 1
-                divisible = counterUp
-                metronome.divisible = counterUp
-            }
-            upNum.text = counterUp.toString()
-        }
-
-        plusBtnUp.setOnClickListener {
-            if (counterUp < 20) {
-                counterUp += 1
-                divisible = counterUp
-                metronome.divisible = counterUp
-            }
-            upNum.text = counterUp.toString()
-        }
-
-        minusBtnDown.setOnClickListener {
-            if (counterDown > 1)
-                counterDown -= 1
-            downNum.text = counterDown.toString()
-        }
-
-        plusBtnDown.setOnClickListener {
-            if (counterDown < 20)
-                counterDown += 1
-            downNum.text = counterDown.toString()
-        }
-    }
-
-
-    fun countBpm(currentBbm: Int): Long {
-        return (60000 / currentBbm).toLong()
-    }
-
-    suspend fun startClick(isPlaying: Boolean, bpmToMillis: Long, metro1: MediaPlayer) =
-        coroutineScope {
-            launch {
-                while (isPlaying) {
-                    metro1.start()
-                    delay(bpmToMillis)
+                    true -> {
+                        isPlaying = false
+                        playButton.text = "Play"
+                        audioTrack.stop()
+                    }
                 }
             }
+            }
         }
+
+    private fun countBpm() {
+        beatDelay = (60000 / bpm).toLong()
+    }
+
+    fun createAudioHandler(){
+        val job = GlobalScope
+    }
 }
 
