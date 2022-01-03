@@ -57,6 +57,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     var divisor: Int = DEFAULT_DIVISOR
     var beatDelay: Long = 0
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        initViews()
+
+        createAudioHandler()
+    }
+
     //TODO rename bpn to pbm. crash
     private fun initViews() {
 
@@ -135,8 +144,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     false -> {
                         isPlaying = true
                         playButton.text = "Stop"
-                        audioTrack.play()
-                        audioTrack.stop()
+                        audioTrackHandler.audioTrack.play()
                     }
                     true -> {
                         isPlaying = false
@@ -153,7 +161,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     }
 
     fun createAudioHandler(){
-        val job = GlobalScope
+        audioTrackHandler = AudioTrackHandler(this)
+        audioTrack = audioTrackHandler.audioTrack
     }
 }
 

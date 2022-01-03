@@ -12,8 +12,7 @@ import android.os.Bundle
 import androidx.annotation.RawRes
 import androidx.annotation.RequiresApi
 import java.io.*
-import java.lang.Byte
-import java.lang.Short
+
 
 const val SAMPLE_RATE = 44100
 const val CHANNEL_CONFIG = AudioFormat.CHANNEL_OUT_MONO
@@ -21,11 +20,8 @@ const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_8BIT
 val BUFFER_SIZE_PLAYING = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
 
 class AudioTrackHandler(val context: Context){
-    init {
-        writeToAudioTrack()
-    }
+    val shortSizeInBytes = Short.SIZE_BYTES
 
-    val shortSizeInBytes = Short.SIZE / Byte.SIZE
     var bufferSizeInBytes = 18194
     val audioData = ShortArray(bufferSizeInBytes)
 
@@ -48,6 +44,10 @@ class AudioTrackHandler(val context: Context){
             audioAttributes, audioFormat, bufferSizeInBytes,
             AudioTrack.MODE_STATIC, AudioManager.AUDIO_SESSION_ID_GENERATE
         )
+
+    init {
+        writeToAudioTrack()
+    }
 
 
     fun writeToAudioTrack(){
